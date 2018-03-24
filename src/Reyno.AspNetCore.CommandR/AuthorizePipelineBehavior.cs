@@ -32,7 +32,12 @@ namespace Reyno.AspNetCore.CommandR {
 
             // handle any exceptions
             try {
+
                 await taskResult;
+
+                var forbidden = taskResult.Result.Where(x => !x.Authorized);
+                if (forbidden.Any()) throw new ForbiddenException(forbidden.Select(x => x.Message));
+
             } catch (Exception e) {
                 if (taskResult.IsCanceled) {
                     throw new TaskCanceledException();

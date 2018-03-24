@@ -18,6 +18,7 @@ namespace SampleWebApplication {
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
 
+            // setup the commandr services
             services.AddCommandR();
 
             services.AddMvc();
@@ -35,6 +36,7 @@ namespace SampleWebApplication {
 
             app.UseStaticFiles();
 
+            // add the commandr middleware
             app.UseCommandR();
 
             app.UseMvc(routes => {

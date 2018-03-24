@@ -13,8 +13,10 @@ namespace SampleWebApplication.Requests.Values {
     }
 
     public class GetRequestAuthorizer : RequestAuthorizer<GetRequest> {
-        public override Task Authorize(GetRequest request, HttpContext context) {
-            throw new System.NotImplementedException();
+        public override Task<AuthorizeResult> Authorize(GetRequest request, HttpContext context) {
+            return Task.FromResult(
+                Succeed()
+                );
         }
     }
 

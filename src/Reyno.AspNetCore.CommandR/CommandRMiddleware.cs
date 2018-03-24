@@ -64,15 +64,41 @@ namespace Reyno.AspNetCore.CommandR {
 
                 var task = (Task)genericSendMethod.Invoke(mediator, new object[] { request, default(CancellationToken) });
 
-                await task;
+                try {
 
-                var resultProperty = task.GetType().GetProperty("Result");
-                var result = resultProperty.GetValue(task);
+                    await task;
 
-                context.Response.StatusCode = (int)HttpStatusCode.OK;
-                await context.Response.WriteAsync(JsonConvert.SerializeObject(result));
+                    var resultProperty = task.GetType().GetProperty("Result");
+                    var result = resultProperty.GetValue(task);
+
+                    context.Response.StatusCode = (int)HttpStatusCode.OK;
+                    await context.Response.WriteAsync(JsonConvert.SerializeObject(result));
+
+                } catch (ForbiddenException forbiddenException) {
+                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    await context.Response.WriteAsync(JsonConvert.SerializeObject(forbiddenException.Messages));
+                } catch (FluentValidation.ValidationException validationException) {
+                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    await context.Response.WriteAsync(JsonConvert.SerializeObject(validationException.Errors.Select(x => new {
+                        x.ErrorMessage,
+                        x.PropertyName,
+                        x.AttemptedValue
+                    })));
+                } catch (Exception e) {
+                    await ReturnError(context.Response, e);
+                }
 
             }
+
+        }
+
+        private async Task ReturnError(HttpResponse response, Exception e, HttpStatusCode status = HttpStatusCode.InternalServerError) {
+
+            response.StatusCode = (int)status;
+            await response.WriteAsync(JsonConvert.SerializeObject(new {
+                message = e.Message,
+                Stack = e.StackTrace.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+            }));
 
         }
 

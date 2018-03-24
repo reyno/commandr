@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Reyno.AspNetCore.CommandR;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 
 namespace Microsoft.Extensions.DependencyInjection {
     public static class DependencyInjectionExtensions {
@@ -21,6 +24,12 @@ namespace Microsoft.Extensions.DependencyInjection {
             services.AddMediatR();
 
             var assemblies = AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic);
+
+            services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+            // add the validator and authorizer pipeline behaviors
+            services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizePipelineBehavior<,>));
+            services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidatePipelineBehavior<,>));
 
             // add the default request resolver
             services.AddSingleton<IRequestResolver, DefaultRequestResolver>();
@@ -63,8 +72,8 @@ namespace Microsoft.Extensions.DependencyInjection {
                 select t
                 ;
 
-            foreach (var validator in types)
-                services.AddScoped(validator);
+            foreach (var implementationType in types)
+                services.AddScoped(implementationType.BaseType, implementationType);
 
 
         }
