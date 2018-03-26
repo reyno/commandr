@@ -105,6 +105,12 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-md-12">
+        <ul id="values"></ul>
+    </div>
+</div>
+
 @section Scripts {
     <script>
 
@@ -118,7 +124,12 @@
                 data: "{ id: 123 }"
             }).then(result => {
 
-
+                var values = document.querySelector("#values");
+                for (var i = 0; i < result.length; i++) {
+                    var li = document.createElement("li");
+                    li.innerText = result[i];
+                    values.appendChild(li);
+                }
 
             })
 
