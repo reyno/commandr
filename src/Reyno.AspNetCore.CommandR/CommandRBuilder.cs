@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Reyno.AspNetCore.CommandR {
@@ -18,6 +20,13 @@ namespace Reyno.AspNetCore.CommandR {
 
             return this;
 
+        }
+
+        public CommandRBuilder AddPipelineBehavior<TType, TRequest, TResponse>() where TType: IPipelineBehavior<TRequest, TResponse> {
+
+            _services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TType));
+
+            return this;
         }
 
     }

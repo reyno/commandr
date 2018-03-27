@@ -43,12 +43,13 @@ namespace Microsoft.Extensions.DependencyInjection {
 
         }
 
-        public static IServiceCollection AddCommandR(this IServiceCollection services, Action<CommandROptions> setupAction) {
+        public static CommandRBuilder AddCommandR(this IServiceCollection services, Action<CommandROptions> setupAction) {
 
-            services.AddCommandR();
+            var builder = services.AddCommandR();
+
             services.Configure(setupAction);
 
-            return services;
+            return builder;
 
         }
 
