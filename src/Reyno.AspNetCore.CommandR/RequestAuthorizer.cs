@@ -6,7 +6,7 @@ namespace Reyno.AspNetCore.CommandR {
 
         public abstract Task<AuthorizeResult> Authorize(TRequest request, HttpContext context);
 
-        public AuthorizeResult Forbid(string message) => new AuthorizeResult {
+        public AuthorizeResult Forbid(string message = null) => new AuthorizeResult {
             Message = message,
             Authorized = false
         };

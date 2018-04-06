@@ -20,7 +20,10 @@ namespace SampleWebApplication {
         public void ConfigureServices(IServiceCollection services) {
 
             // setup the commandr services
-            services.AddCommandR();
+            services
+                .AddCommandR()
+                .AddAuthorization(configure => configure.AuthorizationRequired = true)
+                .AddValidation();
 
             services.AddMvc();
 

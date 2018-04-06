@@ -6,10 +6,10 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Reyno.AspNetCore.CommandR {
-    public class ValidatePipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> {
+    public class RequestValidatorPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> {
         private readonly IServiceProvider _provider;
 
-        public ValidatePipelineBehavior(
+        public RequestValidatorPipelineBehavior(
             IServiceProvider provider
             ) {
             _provider = provider;
