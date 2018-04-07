@@ -6,8 +6,7 @@ using System.Text;
 using MediatR;
 using Microsoft.Extensions.Options;
 
-namespace Reyno.AspNetCore.CommandR
-{
+namespace Reyno.AspNetCore.CommandR {
 
     public interface IRequestResolver {
         Type ResolveType(string command);
@@ -43,12 +42,30 @@ namespace Reyno.AspNetCore.CommandR
             // should translate into {namespace}.Values.GetRequest
 
             var typePath = $"{_options.RequestNamespace}.{command}Request";
-            var matchingTypes = _requestTypes.Where(type => type.FullName.EndsWith(typePath, StringComparison.OrdinalIgnoreCase));
+
+            // capitilise
+            var normalisedTypePath = typePath.Replace("-", string.Empty); /*string.Join(
+                ".", 
+                typePath
+                    .Split(new[] { "." }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(part => string.Join(
+                        string.Empty,
+                        part
+                            .Split(
+                                new[] { "-" }, 
+                                StringSplitOptions.RemoveEmptyEntries
+                            )
+                            .Select(s => string.Concat(s.Substring(0, 1).ToUpper(), s.Substring(1)))
+                    )
+                )
+            );*/
+
+            var matchingTypes = _requestTypes.Where(type => type.FullName.EndsWith(normalisedTypePath, StringComparison.OrdinalIgnoreCase));
 
             switch (matchingTypes.Count()) {
-                case 0: throw new Exception($"No matching request type found for: {command}{Environment.NewLine}Path used: {typePath}");
+                case 0: throw new Exception($"No matching request type found for: {command}{Environment.NewLine}Path used: {normalisedTypePath}");
                 case 1: return matchingTypes.Single();
-                default: throw new Exception($"Multiple request types found for: {command}{Environment.NewLine}Path used: {typePath}");
+                default: throw new Exception($"Multiple request types found for: {command}{Environment.NewLine}Path used: {normalisedTypePath}");
             }
 
         }

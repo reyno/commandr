@@ -34,7 +34,16 @@ namespace Reyno.AspNetCore.CommandR {
 
             var command = Convert.ToString(context.GetRouteValue("command"));
 
-            var requestType = requestResolver.ResolveType(command);
+            // try and resolve the command to a request type
+            var requestType = default(Type);
+            try {
+                requestType = requestResolver.ResolveType(command);
+            }catch(Exception e) {
+                // failed to resolve, return bad request
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                await context.Response.WriteAsync(e.Message);
+                return;
+            }
 
             IBaseRequest request;
             var serializer = new JsonSerializer();
