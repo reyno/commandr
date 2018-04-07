@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.WebUtilities;
+using Newtonsoft.Json.Serialization;
 
 namespace Reyno.AspNetCore.CommandR {
     public class CommandRMiddleware {
@@ -72,14 +73,14 @@ namespace Reyno.AspNetCore.CommandR {
                     var result = resultProperty.GetValue(task);
 
                     context.Response.StatusCode = (int)HttpStatusCode.OK;
-                    await context.Response.WriteAsync(JsonConvert.SerializeObject(result));
+                    await context.Response.WriteAsync(SerializeResult(result));
 
                 } catch (ForbiddenException forbiddenException) {
                     context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                    await context.Response.WriteAsync(JsonConvert.SerializeObject(forbiddenException.Messages));
+                    await context.Response.WriteAsync(SerializeResult(forbiddenException.Messages));
                 } catch (FluentValidation.ValidationException validationException) {
                     context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    await context.Response.WriteAsync(JsonConvert.SerializeObject(validationException.Errors.Select(x => new {
+                    await context.Response.WriteAsync(SerializeResult(validationException.Errors.Select(x => new {
                         x.ErrorMessage,
                         x.PropertyName,
                         x.AttemptedValue
@@ -89,6 +90,16 @@ namespace Reyno.AspNetCore.CommandR {
                 }
 
             }
+
+        }
+
+        private string SerializeResult<T>(T result) {
+
+            return JsonConvert.SerializeObject(result, new JsonSerializerSettings {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                MaxDepth = 10,
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            });
 
         }
 
