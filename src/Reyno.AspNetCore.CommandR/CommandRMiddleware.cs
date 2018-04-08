@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
@@ -107,17 +108,12 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         public async Task InvokeAsync(
-                                                            HttpContext context,
-            IOptions<CommandROptions> optionsAccessor,
-            IRequestResolver requestResolver,
-            IMediator mediator,
-            IOptions<CommandRJsonOptions> jsonOptionsAccessor
+            HttpContext context,
+            ILogger<CommandRMiddleware> logger
             ) {
-            var options = optionsAccessor.Value;
-            var jsonOptions = jsonOptionsAccessor.Value;
 
             // check to see if this is a commandr request
-            var isCommandRRequest = IsCommandRRequest(context, options.Path);
+            var isCommandRRequest = IsCommandRRequest(context);
 
             if (isCommandRRequest) {
                 try {
@@ -132,6 +128,7 @@ namespace Reyno.AspNetCore.CommandR {
                         x.AttemptedValue
                     }));
                 } catch (Exception e) {
+                    logger.LogError(e, "CommandR Request: {path}", context.Request.Path.Value);
                     await WriteResponse(context, HttpStatusCode.InternalServerError, e);
                 }
             } else {
@@ -140,8 +137,13 @@ namespace Reyno.AspNetCore.CommandR {
             }
         }
 
-        public bool IsCommandRRequest(HttpContext context, string path) {
+        public bool IsCommandRRequest(HttpContext context) {
+
+            var options = context.RequestServices.GetService<IOptions<CommandROptions>>().Value;
+            var path = options.Path;
+
             return context.Request.Path.StartsWithSegments($"/{path}");
+
         }
     }
 }

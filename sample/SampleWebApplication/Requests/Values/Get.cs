@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentValidation;
@@ -30,6 +31,8 @@ namespace SampleWebApplication.Requests.Values {
     public class GetRequestHandler : AsyncRequestHandler<GetRequest, IEnumerable<string>> {
 
         protected override Task<IEnumerable<string>> HandleCore(GetRequest request) {
+
+            throw new Exception("Unexpected something or other");
 
             var results = new[] { "Value1", "Value2", "Value3", "Value4", "Value5" };
 
