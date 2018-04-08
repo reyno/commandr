@@ -32,8 +32,7 @@ namespace SampleWebApplication.Requests.Values {
 
         protected override Task<IEnumerable<string>> HandleCore(GetRequest request) {
 
-            throw new Exception("Unexpected something or other");
-
+            
             var results = new[] { "Value1", "Value2", "Value3", "Value4", "Value5" };
 
             return Task.FromResult(results.AsEnumerable());
