@@ -2,69 +2,57 @@
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Microsoft.AspNetCore.WebUtilities;
-using Newtonsoft.Json.Serialization;
 
 namespace Reyno.AspNetCore.CommandR {
-    public class CommandRMiddleware {
 
+    public class CommandRMiddleware {
         private readonly RequestDelegate _next;
 
         public CommandRMiddleware(RequestDelegate next) {
             _next = next;
         }
 
-        public async Task InvokeAsync(
-            HttpContext context,
-            IOptions<CommandROptions> optionsAccessor,
-            IRequestResolver requestResolver,
-            IMediator mediator
-            ) {
+        private Type GetReturnType(Type requestType) {
+            var i = requestType.GetTypeInfo().ImplementedInterfaces.First();
+            return i.GenericTypeArguments.FirstOrDefault();
+        }
 
-            var options = optionsAccessor.Value;
+        private async Task HandleCommandRRequest(HttpContext context) {
 
-            var command = Convert.ToString(context.GetRouteValue("command"));
+            // get stuff from DI
+            var mediator = context.RequestServices.GetService<IMediator>();
+            var jsonOptions = context.RequestServices.GetService<IOptions<CommandRJsonOptions>>().Value;
 
-            // try and resolve the command to a request type
-            var requestType = default(Type);
-            try {
-                requestType = requestResolver.ResolveType(command);
-            }catch(Exception e) {
-                // failed to resolve, return bad request
-                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                await context.Response.WriteAsync(e.Message);
-                return;
-            }
+            // pull out the command name
+            var command = GetCommandName(context);
 
+            // use the resolver registered in DI to get the request type for this command
+            var requestResolver = context.RequestServices.GetService<IRequestResolver>();
+            var requestType = requestResolver.ResolveType(command);
+
+            // read the request
             IBaseRequest request;
             var serializer = new JsonSerializer();
             using (var reader = new StreamReader(context.Request.Body))
             using (var jsonReader = new JsonTextReader(reader))
                 request = (IBaseRequest)serializer.Deserialize(jsonReader, requestType);
 
-
+            // get the return type from the request type
             var returnType = GetReturnType(requestType);
 
-
-            context.Response.ContentType = "application/json";
-
             if (returnType == default) {
-
                 await mediator.Send(request as IRequest);
 
                 context.Response.StatusCode = (int)HttpStatusCode.NoContent;
-
             } else {
-
                 var sendMethod = mediator.GetType().GetMethods().SingleOrDefault(x
                     => x.Name == "Send"
                     && x.IsGenericMethod
@@ -74,58 +62,86 @@ namespace Reyno.AspNetCore.CommandR {
 
                 var task = (Task)genericSendMethod.Invoke(mediator, new object[] { request, default(CancellationToken) });
 
-                try {
+                await task;
 
-                    await task;
+                var resultProperty = task.GetType().GetProperty("Result");
+                var result = resultProperty.GetValue(task);
 
-                    var resultProperty = task.GetType().GetProperty("Result");
-                    var result = resultProperty.GetValue(task);
-
-                    context.Response.StatusCode = (int)HttpStatusCode.OK;
-                    await context.Response.WriteAsync(SerializeResult(result));
-
-                } catch (ForbiddenException forbiddenException) {
-                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                    await context.Response.WriteAsync(SerializeResult(forbiddenException.Messages));
-                } catch (FluentValidation.ValidationException validationException) {
-                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    await context.Response.WriteAsync(SerializeResult(validationException.Errors.Select(x => new {
-                        x.ErrorMessage,
-                        x.PropertyName,
-                        x.AttemptedValue
-                    })));
-                } catch (Exception e) {
-                    await ReturnError(context.Response, e);
-                }
-
+                await WriteResponse(context, HttpStatusCode.OK, result);
             }
-
-        }
-
-        private string SerializeResult<T>(T result) {
-
-            return JsonConvert.SerializeObject(result, new JsonSerializerSettings {
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                MaxDepth = 10,
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            });
-
         }
 
         private async Task ReturnError(HttpResponse response, Exception e, HttpStatusCode status = HttpStatusCode.InternalServerError) {
-
             response.StatusCode = (int)status;
             await response.WriteAsync(JsonConvert.SerializeObject(new {
                 message = e.Message,
                 Stack = e.StackTrace.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
             }));
-
         }
 
-        private Type GetReturnType(Type requestType) {
-            var i = requestType.GetTypeInfo().ImplementedInterfaces.First();
-            return i.GenericTypeArguments.FirstOrDefault();
+        private string SerializeResult<T>(T result, JsonSerializerSettings settings) {
+            return JsonConvert.SerializeObject(result, settings);
         }
 
+        private async Task WriteResponse<T>(HttpContext context, HttpStatusCode status, T content = default) where T : class {
+            var jsonOptions = context.RequestServices.GetService<IOptions<CommandRJsonOptions>>().Value;
+
+            context.Response.StatusCode = (int)status;
+
+            if (content != default(T)) {
+                var json = JsonConvert.SerializeObject(content, jsonOptions.SerializerSettings);
+                await context.Response.WriteAsync(json);
+            }
+        }
+
+        public string GetCommandName(HttpContext context) {
+            var path = context.Request.Path.Value;
+            var queryIndex = path.IndexOf("?");
+            var pathWithoutQuery = queryIndex == -1 ? path : path.Substring(0, queryIndex);
+
+            var pathParts = pathWithoutQuery.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (pathParts.Length < 2) throw new ArgumentException("Command name not found in path");
+
+            return pathParts[1];
+        }
+
+        public async Task InvokeAsync(
+                                                            HttpContext context,
+            IOptions<CommandROptions> optionsAccessor,
+            IRequestResolver requestResolver,
+            IMediator mediator,
+            IOptions<CommandRJsonOptions> jsonOptionsAccessor
+            ) {
+            var options = optionsAccessor.Value;
+            var jsonOptions = jsonOptionsAccessor.Value;
+
+            // check to see if this is a commandr request
+            var isCommandRRequest = IsCommandRRequest(context, options.Path);
+
+            if (isCommandRRequest) {
+                try {
+                    // is a CommandR request, so handle it
+                    await HandleCommandRRequest(context);
+                } catch (ForbiddenException forbiddenException) {
+                    await WriteResponse(context, HttpStatusCode.BadRequest, forbiddenException.Messages);
+                } catch (FluentValidation.ValidationException validationException) {
+                    await WriteResponse(context, HttpStatusCode.BadRequest, validationException.Errors.Select(x => new {
+                        x.ErrorMessage,
+                        x.PropertyName,
+                        x.AttemptedValue
+                    }));
+                } catch (Exception e) {
+                    await WriteResponse(context, HttpStatusCode.InternalServerError, e);
+                }
+            } else {
+                // not a CommandR request, pass to the next middleware
+                await _next(context);
+            }
+        }
+
+        public bool IsCommandRRequest(HttpContext context, string path) {
+            return context.Request.Path.StartsWithSegments($"/{path}");
+        }
     }
 }

@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using MediatR;
 using Microsoft.Extensions.Options;
 
 namespace Reyno.AspNetCore.CommandR {
 
     public interface IRequestResolver {
+
         Type ResolveType(string command);
     }
 
@@ -19,7 +19,6 @@ namespace Reyno.AspNetCore.CommandR {
         public DefaultRequestResolver(
             IOptions<CommandROptions> optionsAccessor
             ) {
-
             _options = optionsAccessor.Value;
 
             var interfaceType = typeof(IBaseRequest);
@@ -32,12 +31,9 @@ namespace Reyno.AspNetCore.CommandR {
                 where interfaceType.IsAssignableFrom(implementedType)
                 select type
                 ).ToList();
-
-
         }
 
         public Type ResolveType(string command) {
-
             // expecting the format: values.get
             // should translate into {namespace}.Values.GetRequest
 
@@ -45,14 +41,14 @@ namespace Reyno.AspNetCore.CommandR {
 
             // capitilise
             var normalisedTypePath = typePath.Replace("-", string.Empty); /*string.Join(
-                ".", 
+                ".",
                 typePath
                     .Split(new[] { "." }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(part => string.Join(
                         string.Empty,
                         part
                             .Split(
-                                new[] { "-" }, 
+                                new[] { "-" },
                                 StringSplitOptions.RemoveEmptyEntries
                             )
                             .Select(s => string.Concat(s.Substring(0, 1).ToUpper(), s.Substring(1)))
@@ -67,9 +63,6 @@ namespace Reyno.AspNetCore.CommandR {
                 case 1: return matchingTypes.Single();
                 default: throw new Exception($"Multiple request types found for: {command}{Environment.NewLine}Path used: {normalisedTypePath}");
             }
-
         }
-
     }
-
 }

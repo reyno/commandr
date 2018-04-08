@@ -7,7 +7,8 @@ namespace Reyno.AspNetCore.CommandR {
     [Serializable]
     public class ForbiddenException : Exception {
 
-        public IEnumerable<string> Messages { get; private set; }
+        protected ForbiddenException(SerializationInfo info, StreamingContext context) : base(info, context) {
+        }
 
         public ForbiddenException() {
         }
@@ -22,8 +23,6 @@ namespace Reyno.AspNetCore.CommandR {
         public ForbiddenException(string message, Exception innerException) : base(message, innerException) {
         }
 
-        protected ForbiddenException(SerializationInfo info, StreamingContext context) : base(info, context) {
-        }
-
+        public IEnumerable<string> Messages { get; private set; }
     }
 }

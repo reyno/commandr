@@ -121,8 +121,10 @@
                 method: "POST",
                 contentType: "application/json",
                 dataType: "json",
-                data: "{ id: 123 }"
-            }).then(result => {
+                data: "{ 'id': 123 }"
+            }).fail(reason => {
+                console.error(reason);
+            }).done(result => {
 
                 var values = document.querySelector("#values");
                 for (var i = 0; i < result.length; i++) {
@@ -131,7 +133,7 @@
                     values.appendChild(li);
                 }
 
-            })
+            });
 
         });
 
