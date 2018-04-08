@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
 using Microsoft.ApplicationInsights;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -33,6 +35,20 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         private async Task AuthorizeRequest(TRequest request) {
+
+            // need to ensure that we're logged in
+            var policyProvider = _httpContext.RequestServices.GetRequiredService<IAuthorizationPolicyProvider>();
+            var policyEvaluator = _httpContext.RequestServices.GetRequiredService<IPolicyEvaluator>();
+            var authenticateResult = await policyEvaluator.AuthenticateAsync(
+                new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build(),
+                _httpContext
+                );
+            if (!authenticateResult.Succeeded) throw new ForbiddenException();
+
+            // ***
+            // now, we can attempt to authorize
+            // ***
+
             // find authorizers
             var authorizers = _serviceProvider.GetServices<RequestAuthorizer<TRequest>>();
 

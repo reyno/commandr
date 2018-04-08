@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -21,7 +18,7 @@ namespace SampleWebApplication {
 
             // setup the commandr services
             services.AddCommandR(configure => {
-                configure.UseAuthorization = true;
+                configure.UseAuthorization = false;
             });
 
             services.AddMvc();

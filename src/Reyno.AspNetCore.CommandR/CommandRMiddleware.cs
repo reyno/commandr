@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -117,10 +119,13 @@ namespace Reyno.AspNetCore.CommandR {
 
             if (isCommandRRequest) {
                 try {
+
                     // is a CommandR request, so handle it
                     await HandleCommandRRequest(context);
+
+
                 } catch (ForbiddenException forbiddenException) {
-                    await WriteResponse(context, HttpStatusCode.BadRequest, forbiddenException.Messages);
+                    await WriteResponse(context, HttpStatusCode.Forbidden, forbiddenException.Messages);
                 } catch (FluentValidation.ValidationException validationException) {
                     await WriteResponse(context, HttpStatusCode.BadRequest, validationException.Errors.Select(x => new {
                         x.ErrorMessage,
