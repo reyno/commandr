@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
 using Microsoft.ApplicationInsights;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +21,7 @@ namespace Reyno.AspNetCore.CommandR {
         private readonly HttpContext _httpContext;
         private readonly ILogger<CommandRPipelineBehavior<TRequest, TResponse>> _logger;
         private readonly CommandROptions _options;
+        private readonly IAuthenticationSchemeProvider _schemeProvider;
         private readonly IServiceProvider _serviceProvider;
 
         public CommandRPipelineBehavior(
@@ -35,19 +37,8 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         private async Task AuthorizeRequest(TRequest request) {
-
-            // need to ensure that we're logged in
-            var policyProvider = _httpContext.RequestServices.GetRequiredService<IAuthorizationPolicyProvider>();
-            var policyEvaluator = _httpContext.RequestServices.GetRequiredService<IPolicyEvaluator>();
-            var authenticateResult = await policyEvaluator.AuthenticateAsync(
-                new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build(),
-                _httpContext
-                );
-            if (!authenticateResult.Succeeded) throw new ForbiddenException();
-
-            // ***
-            // now, we can attempt to authorize
-            // ***
+            // ensure that the request is authenticated
+            if (!await IsAuthenticated()) throw new ForbiddenException();
 
             // find authorizers
             var authorizers = _serviceProvider.GetServices<RequestAuthorizer<TRequest>>();
@@ -83,8 +74,25 @@ namespace Reyno.AspNetCore.CommandR {
             }
         }
 
-        private void LogRequest(TRequest request, bool success, double totalTime, double requestTime, double authorizeTime, double validateTime) {
+        private async Task<bool> IsAuthenticated() {
+            // need to ensure that the request is authenticated
+            var schemeProvider = _httpContext.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
+            var policyEvaluator = _httpContext.RequestServices.GetRequiredService<IPolicyEvaluator>();
 
+            // create a policy requiring an authenticated user for the configured schemes
+            var schemes = await schemeProvider.GetAllSchemesAsync();
+            var policy = new AuthorizationPolicyBuilder(schemes.Select(x => x.Name).ToArray())
+                .RequireAuthenticatedUser()
+                .Build();
+
+            // authenticate: sets up the HttpContext.User if successful
+            var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, _httpContext);
+
+            // return the result
+            return authenticateResult.Succeeded;
+        }
+
+        private void LogRequest(TRequest request, bool success, double totalTime, double requestTime, double authorizeTime, double validateTime) {
             if (success)
                 _logger.LogInformation("CommandR Request {Request} finished in {totalTime}ms", request.GetType().FullName, totalTime);
             else
@@ -116,7 +124,6 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         public async Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken, RequestHandlerDelegate<TResponse> next) {
-
             // start a stopwatch
             var stopwatch = Stopwatch.StartNew();
             var authorizeComplete = default(double);
@@ -125,7 +132,6 @@ namespace Reyno.AspNetCore.CommandR {
             // if we got this far, authorization and validation succeeded
             var success = true;
             try {
-
                 // if authorization is required, do it
                 if (_options.UseAuthorization || _options.RequireAuthorization) await AuthorizeRequest(request);
 
@@ -137,12 +143,10 @@ namespace Reyno.AspNetCore.CommandR {
                 validateComplete = stopwatch.ElapsedMilliseconds;
 
                 return await next();
-
             } catch {
                 success = false;
                 throw;
             } finally {
-
                 var nextComplete = stopwatch.ElapsedMilliseconds;
 
                 // log the request
@@ -154,11 +158,7 @@ namespace Reyno.AspNetCore.CommandR {
                     authorizeComplete,
                     validateComplete - authorizeComplete
                     );
-
             }
-
-
-
         }
     }
 }

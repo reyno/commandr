@@ -6,8 +6,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -29,7 +27,6 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         private async Task HandleCommandRRequest(HttpContext context) {
-
             // get stuff from DI
             var mediator = context.RequestServices.GetService<IMediator>();
             var jsonOptions = context.RequestServices.GetService<IOptions<CommandRJsonOptions>>().Value;
@@ -113,17 +110,13 @@ namespace Reyno.AspNetCore.CommandR {
             HttpContext context,
             ILogger<CommandRMiddleware> logger
             ) {
-
             // check to see if this is a commandr request
             var isCommandRRequest = IsCommandRRequest(context);
 
             if (isCommandRRequest) {
                 try {
-
                     // is a CommandR request, so handle it
                     await HandleCommandRRequest(context);
-
-
                 } catch (ForbiddenException forbiddenException) {
                     await WriteResponse(context, HttpStatusCode.Forbidden, forbiddenException.Messages);
                 } catch (FluentValidation.ValidationException validationException) {
@@ -143,12 +136,10 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         public bool IsCommandRRequest(HttpContext context) {
-
             var options = context.RequestServices.GetService<IOptions<CommandROptions>>().Value;
             var path = options.Path;
 
             return context.Request.Path.StartsWithSegments($"/{path}");
-
         }
     }
 }
