@@ -84,6 +84,7 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         private async Task WriteResponse<T>(HttpContext context, HttpStatusCode status, T content = default) where T : class {
+
             var jsonOptions = context.RequestServices.GetService<IOptions<CommandRJsonOptions>>().Value;
 
             context.Response.StatusCode = (int)status;
@@ -92,6 +93,7 @@ namespace Reyno.AspNetCore.CommandR {
                 var json = JsonConvert.SerializeObject(content, jsonOptions.SerializerSettings);
                 await context.Response.WriteAsync(json);
             }
+
         }
 
         public string GetCommandName(HttpContext context) {

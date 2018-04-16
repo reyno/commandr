@@ -19,6 +19,8 @@ namespace SampleWebApplication {
             // setup the commandr services
             services.AddCommandR(configure => {
                 configure.UseAuthorization = false;
+            }).AddJsonOptions(options => {
+                options.SerializerSettings.MaxDepth = 5;
             });
 
             services.AddMvc();
