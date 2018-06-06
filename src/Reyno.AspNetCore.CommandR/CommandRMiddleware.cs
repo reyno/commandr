@@ -46,7 +46,7 @@ namespace Reyno.AspNetCore.CommandR {
                 request = (IBaseRequest)serializer.Deserialize(jsonReader, requestType);
 
             // get the return type from the request type
-            var returnType = GetReturnType(requestType);
+            var returnType = GetReturnType(requestType) ?? typeof(Unit);
 
             if (returnType == default) {
                 await mediator.Send(request as IRequest);

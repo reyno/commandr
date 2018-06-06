@@ -21,7 +21,6 @@ namespace Reyno.AspNetCore.CommandR {
         private readonly HttpContext _httpContext;
         private readonly ILogger<CommandRPipelineBehavior<TRequest, TResponse>> _logger;
         private readonly CommandROptions _options;
-        private readonly IAuthenticationSchemeProvider _schemeProvider;
         private readonly IServiceProvider _serviceProvider;
 
         public CommandRPipelineBehavior(
@@ -63,7 +62,7 @@ namespace Reyno.AspNetCore.CommandR {
                 // throw if any authorizers returned forbidden
                 if (forbidden.Any())
                     throw new ForbiddenException(forbidden.Select(x => x.Message).Where(s => !string.IsNullOrEmpty(s)));
-            } catch (Exception e) {
+            } catch {
                 if (taskResult.IsCanceled) {
                     throw new TaskCanceledException();
                 } else if (taskResult.IsFaulted) {

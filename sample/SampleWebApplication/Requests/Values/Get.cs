@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
@@ -28,9 +29,9 @@ namespace SampleWebApplication.Requests.Values {
         }
     }
 
-    public class GetRequestHandler : AsyncRequestHandler<GetRequest, IEnumerable<string>> {
+    public class GetRequestHandler : IRequestHandler<GetRequest, IEnumerable<string>> {
 
-        protected override Task<IEnumerable<string>> HandleCore(GetRequest request) {
+        public Task<IEnumerable<string>> Handle(GetRequest request, CancellationToken cancellationToken) {
 
             
             var results = new[] { "Value1", "Value2", "Value3", "Value4", "Value5" };
