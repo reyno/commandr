@@ -11,5 +11,7 @@
         public bool UseAuthorization { get; set; } = true;
 
         public bool UseValidation { get; set; } = true;
+
+        public bool AllowNoContext { get; set; } = true;
     }
 }

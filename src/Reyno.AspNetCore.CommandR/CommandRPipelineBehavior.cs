@@ -37,6 +37,10 @@ namespace Reyno.AspNetCore.CommandR {
         }
 
         private async Task AuthorizeRequest(TRequest request) {
+
+            // if not within an HTTP context and that's allowed, exit
+            if (_httpContext == null && _options.AllowNoContext) return;
+
             // ensure that the request is authenticated
             if (!await IsAuthenticated()) throw new ForbiddenException();
 
